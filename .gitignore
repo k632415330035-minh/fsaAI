@@ -1,0 +1,13 @@
+.env
+node_modules
+.vscode
+dist
+__pycache__
+*.pyc
+*.log
+*.db
+Frontend/dist
+Frontend/frontend*.log
+Backend/server*.log
+Backend/data
+backend_fsa/server*.log
