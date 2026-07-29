@@ -30,7 +30,7 @@ export default function HeroSection() {
           <h1>
             <span>Phân tích sức khỏe</span>
             <span>tài chính doanh nghiệp</span>
-            <span>bằng AI</span>
+            <span className="mt-2 block font-extrabold text-blue-300">bằng AI</span>
           </h1>
           <p>
             Chỉ cần nhập mã cổ phiếu, hệ thống sẽ phân tích dữ liệu tài chính trong 2 năm gần nhất,

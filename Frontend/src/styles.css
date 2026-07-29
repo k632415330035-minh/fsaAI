@@ -360,13 +360,15 @@ label {
   color: #fff;
   font-size: clamp(44px, 5.6vw, 78px);
   font-weight: 900;
-  line-height: 1.25;
+  line-height: 1.4 !important;
   letter-spacing: -0.045em;
 }
 
 .landing-hero-copy h1 span {
   display: block;
-  margin-bottom: 0.25rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.4 !important;
 }
 
 .landing-hero-copy > p:not(.landing-badge) {
@@ -1040,7 +1042,7 @@ label {
   margin-bottom: 16px;
   color: #fff;
   font-size: 30px;
-  line-height: 1.25;
+  line-height: 1.4 !important;
 }
 
 .toggle-panel p {
@@ -1730,7 +1732,7 @@ tr:hover td {
     max-width: 100%;
     font-size: clamp(42px, 11.6vw, 48px);
     letter-spacing: -0.04em;
-    line-height: 1.25;
+    line-height: 1.4 !important;
   }
 
   .landing-hero-copy > p:not(.landing-badge) {
