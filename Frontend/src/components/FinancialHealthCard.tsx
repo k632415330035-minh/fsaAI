@@ -7,21 +7,34 @@ interface FinancialHealthCardProps {
 
 export default function FinancialHealthCard({ analysis }: FinancialHealthCardProps) {
   const { current, previous } = analysis.periods;
-  const scorePercent = Math.max(0, Math.min(100, (analysis.financialHealth.score / analysis.financialHealth.maxScore) * 100));
+  const score = analysis.financialHealth.score;
+  const maxScore = analysis.financialHealth.maxScore;
+  const level = analysis.financialHealth.level;
+
+  const levelColor =
+    level === "Tốt"
+      ? "#10b981"
+      : level === "Khá"
+      ? "#3b82f6"
+      : level === "Trung bình"
+      ? "#f59e0b"
+      : "#ef4444";
 
   return (
     <section className="health-summary-grid">
-      <article className="panel health-score-card">
-        <div>
-          <p className="section-kicker">Financial Health</p>
-          <h2>{analysis.financialHealth.level}</h2>
-          <strong>{analysis.financialHealth.score}/{analysis.financialHealth.maxScore}</strong>
-        </div>
-        <div className="health-ring" style={{ background: `conic-gradient(#2563EB ${scorePercent}%, #E2E8F0 0)` }}>
-          <span>{analysis.financialHealth.score}</span>
-        </div>
+      {/* Card 1: Financial Health Score */}
+      <article className="panel health-score-card-simple">
+        <p className="section-kicker">Financial Health</p>
+        <h2 style={{ margin: 0, fontSize: 32, fontWeight: 700, color: levelColor, lineHeight: 1.2 }}>
+          {level}
+        </h2>
+        <strong style={{ display: "block", color: "#0f1f3d", fontSize: 52, fontWeight: 800, lineHeight: 1, marginTop: 4 }}>
+          {score}
+          <span style={{ fontSize: 24, fontWeight: 600, color: "#94a3b8" }}>/{maxScore}</span>
+        </strong>
       </article>
 
+      {/* Card 2: Company Info */}
       <article className="panel company-info-card">
         <div className="panel-heading compact-heading">
           <div>
@@ -31,13 +44,23 @@ export default function FinancialHealthCard({ analysis }: FinancialHealthCardPro
           <ShieldCheck className="blue-icon" />
         </div>
         <div className="company-facts">
-          <span><strong>Mã</strong>{analysis.symbol}</span>
-          <span><strong>Nguồn</strong>{analysis.dataSource}</span>
-          <span><strong>Kỳ so sánh</strong>{previous} - {current}</span>
+          <span>
+            <strong>Mã</strong>
+            {analysis.symbol}
+          </span>
+          <span>
+            <strong>Nguồn</strong>
+            {analysis.dataSource}
+          </span>
+          <span>
+            <strong>Kỳ so sánh</strong>
+            {previous} - {current}
+          </span>
         </div>
         <p>{analysis.financialHealth.summary}</p>
       </article>
 
+      {/* Card 3: Disclaimer */}
       <article className="panel company-info-card">
         <div className="panel-heading compact-heading">
           <div>

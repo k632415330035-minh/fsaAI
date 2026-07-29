@@ -3,6 +3,7 @@ import type {
   FinancialAnalysisResult,
   FinancialHealthLevel,
   FinancialMetric,
+  MetricGroup,
   Trend
 } from "../types/financial";
 
@@ -25,17 +26,101 @@ export function normalizeFinancialAnalysisResponse(raw: unknown): FinancialAnaly
   const response = raw as Partial<FinancialAnalysisApiResponse> | RawRecord;
 
   if (isContractSuccess(response)) {
-    return response.data;
+    return ensureGroupsInResult(response.data);
   }
 
   const source = asRecord(response);
   const analysis = asRecord(source.analysis);
-  const dashboardData = asRecord(analysis.data);
-  const metrics = asRecord(dashboardData.metrics);
-  const ratios = asRecord(dashboardData.ratios);
+  const analysisData = asRecord(analysis.data);
+  const dashboardData = asRecord(source.metrics || source.groups || source.ratios ? source : (analysisData.metrics ? analysisData : source));
+  const metricsRaw = asRecord(dashboardData.metrics);
+  const ratiosRaw = asRecord(dashboardData.ratios);
+  const groupsRaw = asRecord(dashboardData.groups);
 
   const currentYear = toStringOrEmpty(dashboardData.latest_year) || new Date().getFullYear().toString();
-  const previousYear = inferPreviousYear(currentYear);
+  const previousYear = toStringOrEmpty(dashboardData.previous_year) || inferPreviousYear(currentYear);
+
+  // Parse 6 groups
+  const scaleGroup: MetricGroup = {
+    title: "1. Quy mô doanh nghiệp",
+    metrics: [
+      metricFromRaw("Doanh thu thuần", "VND", metricsRaw.revenue ?? ratiosRaw.revenue),
+      metricFromRaw("Lợi nhuận gộp", "VND", metricsRaw.gross_profit ?? ratiosRaw.gross_profit),
+      metricFromRaw("Lợi nhuận sau thuế", "VND", metricsRaw.net_profit ?? ratiosRaw.net_profit),
+      metricFromRaw("Dòng tiền từ HĐKD", "VND", metricsRaw.operating_cashflow ?? metricsRaw.operatingCashFlow),
+      metricFromRaw("Tổng tài sản", "VND", metricsRaw.total_assets ?? ratiosRaw.total_assets),
+      metricFromRaw("Vốn chủ sở hữu", "VND", metricsRaw.total_equity ?? ratiosRaw.total_equity),
+      metricFromRaw("Nợ phải trả", "VND", metricsRaw.total_liabilities ?? ratiosRaw.total_liabilities),
+      metricFromRaw("Tài sản ngắn hạn", "VND", metricsRaw.current_assets ?? ratiosRaw.current_assets),
+    ]
+  };
+
+  const profitGroup: MetricGroup = {
+    title: "2. Khả năng sinh lời",
+    metrics: [
+      metricFromRaw("Biên lợi nhuận gộp (Gross Margin)", "%", ratiosRaw.gross_margin ?? ratiosRaw.grossMargin),
+      metricFromRaw("Biên lợi nhuận ròng (Net Margin)", "%", ratiosRaw.net_margin ?? ratiosRaw.netMargin),
+      metricFromRaw("ROE", "%", ratiosRaw.roe),
+      metricFromRaw("ROA", "%", ratiosRaw.roa),
+      metricFromRaw("Biên HĐKD (Operating Margin)", "%", ratiosRaw.operating_margin ?? ratiosRaw.operatingMargin),
+      metricFromRaw("Biên EBIT (EBIT Margin)", "%", ratiosRaw.ebit_margin ?? ratiosRaw.ebitMargin),
+      metricFromRaw("Biên EBITDA (EBITDA Margin)", "%", ratiosRaw.ebitda_margin ?? ratiosRaw.ebitdaMargin),
+    ]
+  };
+
+  const leverageGroup: MetricGroup = {
+    title: "3. Đòn bẩy tài chính",
+    metrics: [
+      metricFromRaw("Tỷ lệ Nợ/Vốn CSH (Debt / Equity)", "lần", ratiosRaw.de_ratio ?? ratiosRaw.deRatio),
+      metricFromRaw("Tỷ lệ Nợ/Tổng tài sản (Debt Ratio)", "%", ratiosRaw.debt_ratio ?? ratiosRaw.debtRatio),
+      metricFromRaw("Tỷ lệ Tự chủ tài chính (Equity Ratio)", "%", ratiosRaw.equity_ratio ?? ratiosRaw.equityRatio),
+    ]
+  };
+
+  const liquidityGroup: MetricGroup = {
+    title: "4. Thanh khoản",
+    metrics: [
+      metricFromRaw("Tỷ lệ Thanh toán hiện hành (Current Ratio)", "lần", ratiosRaw.current_ratio ?? ratiosRaw.currentRatio),
+      metricFromRaw("Tỷ lệ Thanh toán nhanh (Quick Ratio)", "lần", ratiosRaw.quick_ratio ?? ratiosRaw.quickRatio),
+      metricFromRaw("Tỷ lệ Thanh toán tiền mặt (Cash Ratio)", "lần", ratiosRaw.cash_ratio ?? ratiosRaw.cashRatio),
+    ]
+  };
+
+  const efficiencyGroup: MetricGroup = {
+    title: "5. Hiệu quả sử dụng tài sản",
+    metrics: [
+      metricFromRaw("Vòng quay tổng tài sản (Asset Turnover)", "lần", ratiosRaw.asset_turnover ?? ratiosRaw.assetTurnover),
+      metricFromRaw("Vòng quay hàng tồn kho (Inventory Turnover)", "lần", ratiosRaw.inventory_turnover ?? ratiosRaw.inventoryTurnover),
+      metricFromRaw("Vòng quay khoản phải thu (Receivable Turnover)", "lần", ratiosRaw.receivable_turnover ?? ratiosRaw.receivableTurnover),
+    ]
+  };
+
+  const growthGroup: MetricGroup = {
+    title: "6. Tăng trưởng (YoY)",
+    metrics: [
+      metricFromRaw("Tăng trưởng doanh thu", "%", ratiosRaw.revenue_growth ?? ratiosRaw.revenueGrowth),
+      metricFromRaw("Tăng trưởng lợi nhuận", "%", ratiosRaw.profit_growth ?? ratiosRaw.profitGrowth),
+      metricFromRaw("Tăng trưởng tổng tài sản", "%", ratiosRaw.asset_growth ?? ratiosRaw.assetGrowth),
+      metricFromRaw("Tăng trưởng vốn chủ", "%", ratiosRaw.equity_growth ?? ratiosRaw.equityGrowth),
+    ]
+  };
+
+  const groups: MetricGroup[] = [
+    scaleGroup,
+    profitGroup,
+    leverageGroup,
+    liquidityGroup,
+    efficiencyGroup,
+    growthGroup,
+  ];
+
+  const allMetrics: Record<string, FinancialMetric> = {
+    roe: metricFromRaw("ROE", "%", ratiosRaw.roe),
+    roa: metricFromRaw("ROA", "%", ratiosRaw.roa),
+    currentRatio: metricFromRaw("Tỷ lệ thanh toán ngắn hạn", "lần", ratiosRaw.current_ratio ?? ratiosRaw.currentRatio),
+    operatingCashFlow: metricFromRaw("Dòng tiền từ hoạt động kinh doanh", "VND", metricsRaw.operating_cashflow ?? metricsRaw.operatingCashFlow),
+    revenueGrowth: metricFromRaw("Tăng trưởng doanh thu", "%", ratiosRaw.revenue_growth ?? ratiosRaw.revenueGrowth),
+  };
 
   return {
     symbol: toStringOrEmpty(source.symbol).toUpperCase(),
@@ -48,18 +133,13 @@ export function normalizeFinancialAnalysisResponse(raw: unknown): FinancialAnaly
       previous: previousYear
     },
     financialHealth: {
-      score: toNumberOrDefault(source.total_score ?? dashboardData.total_score, 0),
-      maxScore: toNumberOrDefault(source.max_score ?? dashboardData.max_score, 100),
+      score: toNumberOrDefault(source.total_score ?? dashboardData.total_score ?? source.score, 0),
+      maxScore: toNumberOrDefault(source.max_score ?? dashboardData.max_score ?? source.maxScore, 100),
       level: normalizeLevel(source.rating ?? source.level ?? dashboardData.level),
       summary: toStringOrEmpty(source.summary ?? dashboardData.summary)
     },
-    metrics: {
-      roe: metricFromRaw("ROE", "%", ratios.roe),
-      roa: metricFromRaw("ROA", "%", ratios.roa),
-      currentRatio: metricFromRaw("Tỷ lệ thanh toán ngắn hạn", "lần", ratios.current_ratio ?? ratios.currentRatio),
-      operatingCashFlow: metricFromRaw("Dòng tiền từ hoạt động kinh doanh", "VND", metrics.operating_cashflow ?? metrics.operatingCashFlow),
-      revenueGrowth: metricFromRaw("Tăng trưởng doanh thu", "%", ratios.revenue_growth ?? ratios.revenueGrowth)
-    },
+    metrics: allMetrics,
+    groups: groups,
     insights: {
       summary: toStringOrEmpty(source.ai_summary ?? source.summary),
       strengths: toStringArray(source.strengths),
@@ -71,9 +151,14 @@ export function normalizeFinancialAnalysisResponse(raw: unknown): FinancialAnaly
   };
 }
 
+function ensureGroupsInResult(result: FinancialAnalysisResult): FinancialAnalysisResult {
+  if (result.groups && result.groups.length > 0) return result;
+  return normalizeFinancialAnalysisResponse({ success: false, analysis: { data: result } });
+}
+
 function isContractSuccess(raw: unknown): raw is { success: true; data: FinancialAnalysisResult; error: null } {
   const record = asRecord(raw);
-  return record.success === true && typeof record.data === "object" && record.data !== null;
+  return record.success === true && typeof record.data === "object" && record.data !== null && Array.isArray((record.data as FinancialAnalysisResult).groups);
 }
 
 function metricFromRaw(label: string, unit: string, rawValue: unknown): FinancialMetric {
@@ -93,9 +178,10 @@ function metricFromRaw(label: string, unit: string, rawValue: unknown): Financia
     };
   }
 
+  const num = toNullableNumber(rawValue);
   return {
     ...emptyMetric(label, unit),
-    current: toNullableNumber(rawValue)
+    current: num
   };
 }
 

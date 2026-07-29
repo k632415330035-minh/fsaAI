@@ -1,11 +1,35 @@
 export type Trend = "up" | "down" | "stable";
 export type FinancialHealthLevel = "Tốt" | "Khá" | "Trung bình" | "Yếu";
+
 export type FinancialMetricKey =
   | "roe"
   | "roa"
   | "currentRatio"
   | "operatingCashFlow"
-  | "revenueGrowth";
+  | "revenueGrowth"
+  | "revenue"
+  | "grossProfit"
+  | "netProfit"
+  | "totalAssets"
+  | "totalEquity"
+  | "totalLiabilities"
+  | "currentAssets"
+  | "grossMargin"
+  | "netMargin"
+  | "operatingMargin"
+  | "ebitMargin"
+  | "ebitdaMargin"
+  | "deRatio"
+  | "debtRatio"
+  | "equityRatio"
+  | "quickRatio"
+  | "cashRatio"
+  | "assetTurnover"
+  | "inventoryTurnover"
+  | "receivableTurnover"
+  | "profitGrowth"
+  | "assetGrowth"
+  | "equityGrowth";
 
 export interface FinancialMetric {
   label: string;
@@ -18,6 +42,11 @@ export interface FinancialMetric {
   score: number;
   maxScore: number;
   comment: string;
+}
+
+export interface MetricGroup {
+  title: string;
+  metrics: FinancialMetric[];
 }
 
 export interface FinancialHealth {
@@ -49,7 +78,8 @@ export interface FinancialAnalysisResult {
   analyzedAt?: string;
   periods: AnalysisPeriods;
   financialHealth: FinancialHealth;
-  metrics: Record<FinancialMetricKey, FinancialMetric>;
+  metrics: Record<string, FinancialMetric>;
+  groups?: MetricGroup[];
   insights: FinancialInsights;
 }
 
