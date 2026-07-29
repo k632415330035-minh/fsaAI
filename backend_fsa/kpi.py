@@ -66,32 +66,38 @@ def calculate_kpi(financial_data: dict) -> dict:
     # ==========================
 
     # Income Statement
-    revenue = _get_val(income, ["Doanh thu thuần", "Doanh thu bán hàng và cung cấp dịch vụ"], latest_year)
-    gross_profit = _get_val(income, "Lợi nhuận gộp", latest_year)
-    net_profit = _get_val(income, ["Lợi nhuận sau thuế", "Lợi nhuận sau thuế thu nhập doanh nghiệp"], latest_year)
-    cogs = _get_val(income, ["Giá vốn", "Giá vốn hàng bán"], latest_year)
-    operating_profit = _get_val(income, ["Lãi/(lỗ) từ hoạt động kinh doanh", "Lợi nhuận thuần từ hoạt động kinh doanh"], latest_year)
-    ebt = _get_val(income, ["Lãi/(lỗ) trước thuế", "Lợi nhuận trước thuế"], latest_year)
-    interest_expense = _get_val(income, "Chi phí lãi vay", latest_year)
+    revenue = _get_val(income, ["Doanh thu thuần", "Thu nhập lãi thuần", "DOANH THU HOẠT ĐỘNG", "Thu nhập lãi và các khoản thu nhập tương tự", "Tổng thu nhập hoạt động", "Doanh thu bán hàng và cung cấp dịch vụ"], latest_year)
+    gross_profit = _get_val(income, ["Lợi nhuận gộp", "LỢI NHUẬN GỘP", "Lãi/Lỗ thuần từ hoạt động dịch vụ"], latest_year)
+    net_profit = _get_val(income, ["Lợi nhuận sau thuế", "Cổ đông của Công ty mẹ", "LỢI NHUẬN KẾ TOÁN SAU THUẾ", "Lợi nhuận sau thuế phân bổ cho chủ sở hữu", "Lợi nhuận sau thuế thu nhập doanh nghiệp"], latest_year)
+    cogs = _get_val(income, ["Giá vốn", "Giá vốn hàng bán", "CHI PHÍ HOẠT ĐỘNG", "Chi phí lãi và các chi phí tương tự"], latest_year)
+    operating_profit = _get_val(income, ["Lãi/(lỗ) từ hoạt động kinh doanh", "Lợi nhuận thuần từ hoạt động kinh doanh", "Lợi nhuận thuần hoạt động trước khi trích lập dự phòng tổn thất tín dụng", "KẾT QUẢ HOẠT ĐỘNG"], latest_year)
+    ebt = _get_val(income, ["Lãi/(lỗ) trước thuế", "Lợi nhuận trước thuế", "Tổng lợi nhuận/lỗ trước thuế", "LỢI NHUẬN TRƯỚC THUẾ"], latest_year)
+    interest_expense = _get_val(income, ["Chi phí lãi vay", "Chi phí lãi và các chi phí tương tự"], latest_year)
+
+    if not gross_profit and net_profit:
+        gross_profit = net_profit
 
     # Balance Sheet
-    total_assets = _get_val(bs, ["Tổng tài sản", "TỔNG CỘNG TÀI SẢN"], latest_year)
-    total_equity = _get_val(bs, "Vốn chủ sở hữu", latest_year)
-    total_liabilities = _get_val(bs, "Nợ phải trả", latest_year)
-    current_assets = _get_val(bs, "Tài sản ngắn hạn", latest_year)
-    current_liabilities = _get_val(bs, ["Nợ ngắn hạn", "Tổng nợ ngắn hạn"], latest_year)
+    total_assets = _get_val(bs, ["Tổng tài sản", "TỔNG CỘNG TÀI SẢN", "TỔNG TÀI SẢN", "Tổng tài sản có"], latest_year)
+    total_equity = _get_val(bs, ["Vốn chủ sở hữu", "VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu của Ngân hàng"], latest_year)
+    total_liabilities = _get_val(bs, ["Nợ phải trả", "NỢ PHẢI TRẢ", "TỔNG NỢ PHẢI TRẢ"], latest_year)
+    current_assets = _get_val(bs, ["Tài sản ngắn hạn", "TÀI SẢN NGẮN HẠN"], latest_year)
+    current_liabilities = _get_val(bs, ["Nợ ngắn hạn", "Tổng nợ ngắn hạn", "NỢ NGẮN HẠN"], latest_year)
+
+    if not current_assets and total_assets:
+        current_assets = total_assets
     if not current_liabilities and total_liabilities:
         current_liabilities = total_liabilities
 
     inventory = _get_val(bs, ["Hàng tồn kho", "Hàng tồn kho, ròng"], latest_year)
-    receivables = _get_val(bs, ["Các khoản phải thu", "Phải thu khách hàng", "Phải thu ngắn hạn"], latest_year)
-    cash_equiv = _get_val(bs, ["Tiền và tương đương tiền", "Tiền"], latest_year) + _get_val(bs, ["Đầu tư ngắn hạn", "Đầu tư tài chính ngắn hạn"], latest_year)
+    receivables = _get_val(bs, ["Các khoản phải thu", "Phải thu khách hàng", "Phải thu ngắn hạn", "Tổng các khoản phải thu"], latest_year)
+    cash_equiv = _get_val(bs, ["Tiền và tương đương tiền", "Tiền và tương đương tiền", "Tiền"], latest_year) + _get_val(bs, ["Đầu tư ngắn hạn", "Đầu tư tài chính ngắn hạn", "Các tài sản tài chính ghi nhận thông qua lãi lỗ (FVTPL)"], latest_year)
 
     # Cash Flow
     operating_cashflow = 0.0
     depreciation = 0.0
     if cashflow is not None and not cashflow.empty:
-        operating_cashflow = _get_val(cashflow, ["Dòng tiền HĐKD", "Lưu chuyển tiền thuần từ hoạt động kinh doanh"], latest_year)
+        operating_cashflow = _get_val(cashflow, ["Dòng tiền HĐKD", "Lưu chuyển tiền thuần từ hoạt động kinh doanh", "Lưu chuyển tiền thuần từ các hoạt động sản xuất kinh doanh", "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động", "Lợi nhuận từ hoạt động kinh doanh trước thay đổi vốn lưu động"], latest_year)
         depreciation = _get_val(cashflow, ["Khấu hao TSCĐ và BĐSĐT", "Khấu hao TSCĐ"], latest_year)
 
     scale_metrics = {

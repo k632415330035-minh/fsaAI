@@ -55,17 +55,29 @@ def build_financial_health_result(financial_data: dict[str, Any]) -> dict[str, A
     raw_metrics = kpi_res.get("metrics", {})
 
     # TÍNH CÁC METRIC TRỌNG YẾU ĐỂ CHẤM ĐIỂM FINANCIAL HEALTH (0-100)
+    # Detect if the entity is a Bank / Financial institution (no standard current assets or uses interest income)
+    is_bank = bool(
+        "Thu nhập lãi thuần" in income.index
+        or "Thu nhập lãi và các khoản thu nhập tương tự" in income.index
+        or "Tài sản ngắn hạn" not in balance_sheet.index
+    )
+
+    # Determine metric score functions based on entity type
+    score_roe_fn = _score_roe_bank if is_bank else _score_roe
+    score_roa_fn = _score_roa_bank if is_bank else _score_roa
+
+    # TÍNH CÁC METRIC TRỌNG YẾU ĐỂ CHẤM ĐIỂM FINANCIAL HEALTH (0-100)
     metrics_health = {
         "roe": _ratio_metric(
             label="ROE",
             unit="%",
             current=raw_ratios.get("roe"),
             previous=_safe_divide(
-                _value(income, ["Lợi nhuận sau thuế"], previous_year),
-                _value(balance_sheet, ["Vốn chủ sở hữu"], previous_year),
+                _value(income, ["Lợi nhuận sau thuế", "Cổ đông của Công ty mẹ", "LỢI NHUẬN KẾ TOÁN SAU THUẾ", "Lợi nhuận sau thuế phân bổ cho chủ sở hữu"], previous_year),
+                _value(balance_sheet, ["Vốn chủ sở hữu", "VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu của Ngân hàng"], previous_year),
                 percent=True,
             ),
-            score_fn=_score_roe,
+            score_fn=score_roe_fn,
             comment_up="ROE cải thiện, hiệu quả sử dụng vốn chủ sở hữu tốt hơn.",
             comment_down="ROE giảm, cần theo dõi khả năng sinh lời trên vốn chủ sở hữu.",
             comment_stable="ROE tương đối ổn định so với kỳ trước.",
@@ -75,52 +87,75 @@ def build_financial_health_result(financial_data: dict[str, Any]) -> dict[str, A
             unit="%",
             current=raw_ratios.get("roa"),
             previous=_safe_divide(
-                _value(income, ["Lợi nhuận sau thuế"], previous_year),
-                _value(balance_sheet, ["Tổng tài sản"], previous_year),
+                _value(income, ["Lợi nhuận sau thuế", "Cổ đông của Công ty mẹ", "LỢI NHUẬN KẾ TOÁN SAU THUẾ", "Lợi nhuận sau thuế phân bổ cho chủ sở hữu"], previous_year),
+                _value(balance_sheet, ["Tổng tài sản", "TỔNG CỘNG TÀI SẢN", "TỔNG TÀI SẢN", "Tổng tài sản có"], previous_year),
                 percent=True,
             ),
-            score_fn=_score_roa,
+            score_fn=score_roa_fn,
             comment_up="ROA tăng, tài sản đang tạo lợi nhuận hiệu quả hơn.",
             comment_down="ROA giảm, hiệu quả khai thác tài sản suy yếu.",
             comment_stable="ROA duy trì ổn định giữa hai kỳ.",
         ),
-        "currentRatio": _ratio_metric(
+    }
+
+    if is_bank:
+        metrics_health["currentRatio"] = _ratio_metric(
+            label="Tỷ lệ Vốn CSH / Tổng tài sản",
+            unit="%",
+            current=_safe_divide(
+                _value(balance_sheet, ["Vốn chủ sở hữu", "VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu của Ngân hàng"], current_year),
+                _value(balance_sheet, ["Tổng tài sản", "TỔNG CỘNG TÀI SẢN", "TỔNG TÀI SẢN", "Tổng tài sản có"], current_year),
+                percent=True,
+            ),
+            previous=_safe_divide(
+                _value(balance_sheet, ["Vốn chủ sở hữu", "VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu của Ngân hàng"], previous_year),
+                _value(balance_sheet, ["Tổng tài sản", "TỔNG CỘNG TÀI SẢN", "TỔNG TÀI SẢN", "Tổng tài sản có"], previous_year),
+                percent=True,
+            ),
+            score_fn=_score_equity_to_assets,
+            comment_up="Tỷ lệ Vốn CSH/Tổng tài sản tăng, đệm an toàn vốn vững chắc hơn.",
+            comment_down="Tỷ lệ Vốn CSH/Tổng tài sản giảm, đòn bẩy tài chính gia tăng.",
+            comment_stable="Tỷ lệ an toàn vốn ổn định.",
+        )
+    else:
+        metrics_health["currentRatio"] = _ratio_metric(
             label="Tỷ lệ thanh toán ngắn hạn",
             unit="lần",
             current=raw_ratios.get("current_ratio"),
             previous=_safe_divide(
-                _value(balance_sheet, ["Tài sản ngắn hạn"], previous_year),
-                _value(balance_sheet, ["Nợ ngắn hạn", "Nợ phải trả"], previous_year),
+                _value(balance_sheet, ["Tài sản ngắn hạn", "TÀI SẢN NGẮN HẠN"], previous_year),
+                _value(balance_sheet, ["Nợ ngắn hạn", "Tổng nợ ngắn hạn", "NỢ NGẮN HẠN", "Nợ phải trả"], previous_year),
             ),
             score_fn=_score_current_ratio,
             comment_up="Khả năng thanh toán ngắn hạn cải thiện.",
             comment_down="Khả năng thanh toán ngắn hạn giảm, cần theo dõi vốn lưu động.",
             comment_stable="Khả năng thanh toán ngắn hạn không biến động lớn.",
+        )
+
+    metrics_health["operatingCashFlow"] = _ratio_metric(
+        label="Dòng tiền từ hoạt động kinh doanh",
+        unit="VND",
+        current=raw_metrics.get("operating_cashflow"),
+        previous=_value(cash_flow, ["Dòng tiền HĐKD", "Lưu chuyển tiền thuần từ hoạt động kinh doanh", "Lưu chuyển tiền thuần từ các hoạt động sản xuất kinh doanh", "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động"], previous_year),
+        score_fn=_score_operating_cash_flow,
+        comment_up="Dòng tiền kinh doanh tăng, hỗ trợ chất lượng lợi nhuận.",
+        comment_down="Dòng tiền kinh doanh giảm, cần kiểm tra khả năng chuyển lợi nhuận thành tiền.",
+        comment_stable="Dòng tiền kinh doanh tương đối ổn định.",
+    )
+
+    metrics_health["revenueGrowth"] = _ratio_metric(
+        label="Tăng trưởng thu nhập" if is_bank else "Tăng trưởng doanh thu",
+        unit="%",
+        current=raw_ratios.get("revenue_growth"),
+        previous=_growth(
+            _value(income, ["Doanh thu thuần", "Thu nhập lãi thuần", "DOANH THU HOẠT ĐỘNG", "Thu nhập lãi và các khoản thu nhập tương tự", "Tổng thu nhập hoạt động"], previous_year),
+            _value(income, ["Doanh thu thuần", "Thu nhập lãi thuần", "DOANH THU HOẠT ĐỘNG", "Thu nhập lãi và các khoản thu nhập tương tự", "Tổng thu nhập hoạt động"], prior_year) if prior_year else None,
         ),
-        "operatingCashFlow": _ratio_metric(
-            label="Dòng tiền từ hoạt động kinh doanh",
-            unit="VND",
-            current=raw_metrics.get("operating_cashflow"),
-            previous=_value(cash_flow, ["Dòng tiền HĐKD"], previous_year),
-            score_fn=_score_operating_cash_flow,
-            comment_up="Dòng tiền kinh doanh tăng, hỗ trợ chất lượng lợi nhuận.",
-            comment_down="Dòng tiền kinh doanh giảm, cần kiểm tra khả năng chuyển lợi nhuận thành tiền.",
-            comment_stable="Dòng tiền kinh doanh tương đối ổn định.",
-        ),
-        "revenueGrowth": _ratio_metric(
-            label="Tăng trưởng doanh thu",
-            unit="%",
-            current=raw_ratios.get("revenue_growth"),
-            previous=_growth(
-                _value(income, ["Doanh thu thuần"], previous_year),
-                _value(income, ["Doanh thu thuần"], prior_year) if prior_year else None,
-            ),
-            score_fn=_score_revenue_growth,
-            comment_up="Tăng trưởng doanh thu cải thiện so với giai đoạn trước.",
-            comment_down="Tăng trưởng doanh thu suy giảm, cần theo dõi sức cầu và hiệu quả bán hàng.",
-            comment_stable="Tăng trưởng doanh thu tương đối ổn định.",
-        ),
-    }
+        score_fn=_score_revenue_growth,
+        comment_up="Tăng trưởng doanh thu/thu nhập cải thiện so với giai đoạn trước.",
+        comment_down="Tăng trưởng doanh thu/thu nhập suy giảm, cần theo dõi hoạt động kinh doanh cốt lõi.",
+        comment_stable="Tăng trưởng doanh thu/thu nhập tương đối ổn định.",
+    )
 
     total_score = int(sum(metric["score"] for metric in metrics_health.values()))
     level = _health_level(total_score)
@@ -430,6 +465,20 @@ def _score_roe(current: float | None, _: float | None) -> int:
     return 4
 
 
+def _score_roe_bank(current: float | None, _: float | None) -> int:
+    if current is None:
+        return 0
+    if current >= 18:
+        return 20
+    if current >= 14:
+        return 16
+    if current >= 10:
+        return 12
+    if current >= 6:
+        return 8
+    return 4
+
+
 def _score_roa(current: float | None, _: float | None) -> int:
     if current is None:
         return 0
@@ -440,6 +489,34 @@ def _score_roa(current: float | None, _: float | None) -> int:
     if current >= 4:
         return 12
     if current >= 1:
+        return 8
+    return 4
+
+
+def _score_roa_bank(current: float | None, _: float | None) -> int:
+    if current is None:
+        return 0
+    if current >= 1.8:
+        return 20
+    if current >= 1.4:
+        return 16
+    if current >= 1.0:
+        return 12
+    if current >= 0.5:
+        return 8
+    return 4
+
+
+def _score_equity_to_assets(current: float | None, _: float | None) -> int:
+    if current is None:
+        return 0
+    if current >= 12:
+        return 20
+    if current >= 9:
+        return 16
+    if current >= 7:
+        return 12
+    if current >= 5:
         return 8
     return 4
 
