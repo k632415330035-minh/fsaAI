@@ -360,12 +360,13 @@ label {
   color: #fff;
   font-size: clamp(44px, 5.6vw, 78px);
   font-weight: 900;
-  line-height: 0.98;
+  line-height: 1.25;
   letter-spacing: -0.045em;
 }
 
 .landing-hero-copy h1 span {
   display: block;
+  margin-bottom: 0.25rem;
 }
 
 .landing-hero-copy > p:not(.landing-badge) {
@@ -1729,7 +1730,7 @@ tr:hover td {
     max-width: 100%;
     font-size: clamp(42px, 11.6vw, 48px);
     letter-spacing: -0.04em;
-    line-height: 1.02;
+    line-height: 1.25;
   }
 
   .landing-hero-copy > p:not(.landing-badge) {
