@@ -12,7 +12,7 @@ import {
   Filler,
   ArcElement
 } from "chart.js";
-import { Bar, Radar } from "react-chartjs-2";
+import { Bar, Line, Radar } from "react-chartjs-2";
 import type { FinancialAnalysisResult } from "../types/financial";
 import { formatMetric } from "../utils/format";
 
@@ -106,7 +106,7 @@ export default function FinancialCharts({ analysis }: FinancialChartsProps) {
   // ==========================
   // 2. DATA BIỂU ĐỒ CỘT SO SÁNH QUY MÔ (SCALE BAR CHART)
   // ==========================
-  const scaleMetrics = scaleGroup?.metrics.slice(0, 5) ?? [];
+  const scaleMetrics = scaleGroup?.metrics?.slice(0, 5) ?? [];
   const scaleBarData = {
     labels: scaleMetrics.map((m) => m.label),
     datasets: [
@@ -188,8 +188,125 @@ export default function FinancialCharts({ analysis }: FinancialChartsProps) {
   };
 
   // ==========================
-  // 4. DATA BIỂU ĐỒ THANH KHOẢN & ĐÒN BẨY (SOLVENCY BARS)
+  // 5. DATA BIỂU ĐỒ NHIỀU CHUỖI (MULTI-LINE GROWTH CHART - 4 CHỈ SỐ TĂNG TRƯỞNG)
   // ==========================
+  const growthYears = analysis.growthChart?.years ?? [previous, current];
+  const gSeries = analysis.growthChart?.series ?? {
+    revenue_growth: [analysis.metrics?.revenueGrowth?.current ?? 0],
+    profit_growth: [0],
+    asset_growth: [0],
+    equity_growth: [0],
+  };
+
+  // Thống kê kỳ mới nhất
+  const lastIdx = growthYears.length - 1;
+  const latestRevGrowth = gSeries.revenue_growth?.[lastIdx] ?? 0;
+  const latestProfitGrowth = gSeries.profit_growth?.[lastIdx] ?? 0;
+  const latestAssetGrowth = gSeries.asset_growth?.[lastIdx] ?? 0;
+  const latestEquityGrowth = gSeries.equity_growth?.[lastIdx] ?? 0;
+
+  const growthLineData = {
+    labels: growthYears,
+    datasets: [
+      {
+        label: "Tăng trưởng Doanh thu (%)",
+        data: gSeries.revenue_growth,
+        borderColor: "#2563eb",
+        backgroundColor: "rgba(37, 99, 235, 0.08)",
+        fill: true,
+        tension: 0.35,
+        pointRadius: 6,
+        pointHoverRadius: 9,
+        pointBackgroundColor: "#ffffff",
+        pointBorderColor: "#2563eb",
+        pointBorderWidth: 2.5,
+        borderWidth: 3,
+      },
+      {
+        label: "Tăng trưởng Lợi nhuận (%)",
+        data: gSeries.profit_growth,
+        borderColor: "#10b981",
+        backgroundColor: "rgba(16, 185, 129, 0.08)",
+        fill: true,
+        tension: 0.35,
+        pointRadius: 6,
+        pointHoverRadius: 9,
+        pointBackgroundColor: "#ffffff",
+        pointBorderColor: "#10b981",
+        pointBorderWidth: 2.5,
+        borderWidth: 3,
+      },
+      {
+        label: "Tăng trưởng Tổng tài sản (%)",
+        data: gSeries.asset_growth,
+        borderColor: "#f59e0b",
+        backgroundColor: "rgba(245, 158, 11, 0.08)",
+        fill: true,
+        tension: 0.35,
+        pointRadius: 6,
+        pointHoverRadius: 9,
+        pointBackgroundColor: "#ffffff",
+        pointBorderColor: "#f59e0b",
+        pointBorderWidth: 2.5,
+        borderWidth: 3,
+      },
+      {
+        label: "Tăng trưởng Vốn chủ sở hữu (%)",
+        data: gSeries.equity_growth,
+        borderColor: "#8b5cf6",
+        backgroundColor: "rgba(139, 92, 246, 0.08)",
+        fill: true,
+        tension: 0.35,
+        pointRadius: 6,
+        pointHoverRadius: 9,
+        pointBackgroundColor: "#ffffff",
+        pointBorderColor: "#8b5cf6",
+        pointBorderWidth: 2.5,
+        borderWidth: 3,
+      },
+    ],
+  };
+
+  const growthLineOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top" as const,
+        labels: {
+          font: { size: 12, weight: 700 as const },
+          usePointStyle: true,
+          boxWidth: 9,
+          padding: 16,
+        },
+      },
+      tooltip: {
+        padding: 12,
+        cornerRadius: 10,
+        callbacks: {
+          label: (ctx: any) => {
+            const val = ctx.raw;
+            const sign = val > 0 ? "+" : "";
+            return ` ${ctx.dataset.label}: ${sign}${val}%`;
+          },
+        },
+      },
+    },
+    scales: {
+      y: {
+        title: { display: true, text: "Tốc độ tăng trưởng YoY (%)", font: { size: 11, weight: 700 as const } },
+        grid: {
+          color: (ctx: any) => (ctx.tick.value === 0 ? "#94a3b8" : "#f1f5f9"),
+          lineWidth: (ctx: any) => (ctx.tick.value === 0 ? 2 : 1),
+        },
+      },
+      x: {
+        grid: { display: false },
+        ticks: { font: { weight: 700 as const } },
+      },
+    },
+  };
+
   const solvencyMetrics = [
     ...(liquidityGroup?.metrics ?? []),
     ...(leverageGroup?.metrics ?? []),
@@ -215,7 +332,7 @@ export default function FinancialCharts({ analysis }: FinancialChartsProps) {
         <div className="chart-card-header">
           <div>
             <span className="chart-tag">Quy mô</span>
-            <h3>So Sánh Quy Mô ({previous} vs {current})</h3>
+            <h3>So Sánh Quy Mô Doanh Nghiệp ({previous} vs {current})</h3>
           </div>
         </div>
         <div className="chart-body">
@@ -223,7 +340,36 @@ export default function FinancialCharts({ analysis }: FinancialChartsProps) {
         </div>
       </div>
 
-      {/* 3. Profitability Chart - Khả năng sinh lời */}
+      {/* 3. Multi-Line Growth Chart - 4 Đường Tăng Trưởng YoY 4 Năm */}
+      <div className="chart-card span-full">
+        <div className="chart-card-header">
+          <div>
+            <span className="chart-tag">Tăng trưởng YoY</span>
+            <h3>Xu Hướng Tăng Trưởng YoY Chuỗi {growthYears.length} Kỳ ({growthYears[0]} - {growthYears[growthYears.length - 1]})</h3>
+          </div>
+
+          {/* Quick Stats Badges Bar */}
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+            <span style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 600 }}>
+              Doanh thu ({growthYears[lastIdx]}): <strong>{latestRevGrowth > 0 ? `+${latestRevGrowth}` : latestRevGrowth}%</strong>
+            </span>
+            <span style={{ background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 600 }}>
+              Lợi nhuận ({growthYears[lastIdx]}): <strong>{latestProfitGrowth > 0 ? `+${latestProfitGrowth}` : latestProfitGrowth}%</strong>
+            </span>
+            <span style={{ background: "#fffbeb", color: "#b45309", border: "1px solid #fde68a", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 600 }}>
+              Tài sản ({growthYears[lastIdx]}): <strong>{latestAssetGrowth > 0 ? `+${latestAssetGrowth}` : latestAssetGrowth}%</strong>
+            </span>
+            <span style={{ background: "#f5f3ff", color: "#6d28d9", border: "1px solid #ddd6fe", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 600 }}>
+              Vốn chủ ({growthYears[lastIdx]}): <strong>{latestEquityGrowth > 0 ? `+${latestEquityGrowth}` : latestEquityGrowth}%</strong>
+            </span>
+          </div>
+        </div>
+        <div className="chart-body height-lg" style={{ marginTop: "12px" }}>
+          <Line data={growthLineData} options={growthLineOptions} />
+        </div>
+      </div>
+
+      {/* 4. Profitability Chart - Khả năng sinh lời */}
       <div className="chart-card span-full">
         <div className="chart-card-header">
           <div>
@@ -236,7 +382,7 @@ export default function FinancialCharts({ analysis }: FinancialChartsProps) {
         </div>
       </div>
 
-      {/* 4. Solvency Progress Bars - Thanh khoản & Đòn bẩy */}
+      {/* 5. Solvency Progress Bars - Thanh khoản & Đòn bẩy */}
       {solvencyMetrics.length > 0 && (
         <div className="chart-card span-full">
           <div className="chart-card-header">

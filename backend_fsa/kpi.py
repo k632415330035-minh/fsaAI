@@ -212,6 +212,47 @@ def calculate_kpi(financial_data: dict) -> dict:
     }
 
     # ==========================
+    # BIỂU ĐỒ TĂNG TRƯỞNG MULTI-LINE CHART (TÍNH THEO CÁC NĂM CÓ TỐC ĐỘ YoY)
+    # ==========================
+    chronological_years = sorted({str(c) for c in bs.columns if str(c).isdigit()})
+    growth_years = chronological_years[1:] if len(chronological_years) > 1 else chronological_years
+
+    rev_series = []
+    profit_series = []
+    asset_series = []
+    equity_series = []
+
+    for i in range(1, len(chronological_years)):
+        y_curr = chronological_years[i]
+        y_prev = chronological_years[i - 1]
+
+        r_c = _get_val(income, ["Doanh thu thuần", "Thu nhập lãi thuần", "DOANH THU HOẠT ĐỘNG", "Thu nhập lãi và các khoản thu nhập tương tự", "Tổng thu nhập hoạt động", "Doanh thu bán hàng và cung cấp dịch vụ"], y_curr)
+        r_p = _get_val(income, ["Doanh thu thuần", "Thu nhập lãi thuần", "DOANH THU HOẠT ĐỘNG", "Thu nhập lãi và các khoản thu nhập tương tự", "Tổng thu nhập hoạt động", "Doanh thu bán hàng và cung cấp dịch vụ"], y_prev)
+        rev_series.append(round(((r_c - r_p) / abs(r_p) * 100), 2) if r_p else 0.0)
+
+        p_c = _get_val(income, ["Lợi nhuận sau thuế", "Cổ đông của Công ty mẹ", "LỢI NHUẬN KẾ TOÁN SAU THUẾ", "Lợi nhuận sau thuế phân bổ cho chủ sở hữu", "Lợi nhuận sau thuế thu nhập doanh nghiệp"], y_curr)
+        p_p = _get_val(income, ["Lợi nhuận sau thuế", "Cổ đông của Công ty mẹ", "LỢI NHUẬN KẾ TOÁN SAU THUẾ", "Lợi nhuận sau thuế phân bổ cho chủ sở hữu", "Lợi nhuận sau thuế thu nhập doanh nghiệp"], y_prev)
+        profit_series.append(round(((p_c - p_p) / abs(p_p) * 100), 2) if p_p else 0.0)
+
+        a_c = _get_val(bs, ["Tổng tài sản", "TỔNG CỘNG TÀI SẢN", "TỔNG TÀI SẢN", "Tổng tài sản có"], y_curr)
+        a_p = _get_val(bs, ["Tổng tài sản", "TỔNG CỘNG TÀI SẢN", "TỔNG TÀI SẢN", "Tổng tài sản có"], y_prev)
+        asset_series.append(round(((a_c - a_p) / abs(a_p) * 100), 2) if a_p else 0.0)
+
+        e_c = _get_val(bs, ["Vốn chủ sở hữu", "VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu của Ngân hàng"], y_curr)
+        e_p = _get_val(bs, ["Vốn chủ sở hữu", "VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu của Ngân hàng"], y_prev)
+        equity_series.append(round(((e_c - e_p) / abs(e_p) * 100), 2) if e_p else 0.0)
+
+    growth_chart = {
+        "years": growth_years,
+        "series": {
+            "revenue_growth": rev_series,
+            "profit_growth": profit_series,
+            "asset_growth": asset_series,
+            "equity_growth": equity_series,
+        },
+    }
+
+    # ==========================
     # TỔNG HỢP KẾT QUẢ
     # ==========================
 
@@ -238,6 +279,7 @@ def calculate_kpi(financial_data: dict) -> dict:
         "groups": groups,
         "metrics": scale_metrics,
         "ratios": all_ratios,
+        "growth_chart": growth_chart,
     }
 
 

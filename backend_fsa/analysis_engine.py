@@ -169,12 +169,13 @@ def build_financial_health_result(financial_data: dict[str, Any]) -> dict[str, A
     formatted_insights = _build_insights_structure(ai_insights, metrics_health, total_score, level)
 
     # Chuyển đổi raw_groups thành mảng MetricGroup cho Frontend
-    groups_list = _build_groups_list(raw_groups, income, balance_sheet, cash_flow, current_year, previous_year, prior_year)
+    all_years = sorted({str(c) for c in balance_sheet.columns if str(c).isdigit()}, reverse=True)
+    groups_list = _build_groups_list(raw_groups, income, balance_sheet, cash_flow, current_year, previous_year, prior_year, all_years)
 
     return {
         "symbol": str(financial_data.get("symbol", "")).upper(),
         "companyName": str(financial_data.get("symbol", "")).upper(),
-        "periods": {"current": current_year, "previous": previous_year},
+        "periods": {"current": current_year, "previous": previous_year, "years": all_years},
         "financialHealth": {
             "score": total_score,
             "maxScore": 100,
@@ -183,15 +184,16 @@ def build_financial_health_result(financial_data: dict[str, Any]) -> dict[str, A
         },
         "metrics": metrics_health,
         "groups": groups_list,
+        "growthChart": kpi_res.get("growth_chart"),
         "insights": formatted_insights,
     }
 
 
-def _build_groups_list(raw_groups: dict, income: Any, balance_sheet: Any, cash_flow: Any, current_year: str, previous_year: str, prior_year: str | None = None) -> list[dict]:
+def _build_groups_list(raw_groups: dict, income: Any, balance_sheet: Any, cash_flow: Any, current_year: str, previous_year: str, prior_year: str | None = None, years: list[str] | None = None) -> list[dict]:
     """Chuyển đổi dict 6 nhóm từ kpi.py thành mảng MetricGroup chuẩn cho Frontend."""
 
-    # Tự động tính giá trị năm trước cho từng chỉ số trong nhóm
     groups_result = []
+    target_years = years if years else ([current_year, previous_year] + ([prior_year] if prior_year else []))
 
     # Map nhãn và đơn vị
     LABELS_MAP = {
@@ -233,6 +235,12 @@ def _build_groups_list(raw_groups: dict, income: Any, balance_sheet: Any, cash_f
             
             # Tính giá trị kỳ trước tương ứng nếu có
             prev_val = _get_previous_val(key, income, balance_sheet, cash_flow, previous_year, prior_year)
+
+            # Tính giá trị cho tất cả các năm
+            yearly_values = {}
+            for yr in target_years:
+                val = _get_previous_val(key, income, balance_sheet, cash_flow, yr, prior_year)
+                yearly_values[yr] = val if val is not None else (curr_val if yr == current_year else None)
             
             change = round(curr_val - prev_val, 2) if (curr_val is not None and prev_val is not None) else None
             change_percent = _growth(curr_val, prev_val) if (curr_val is not None and prev_val is not None) else None

@@ -36,6 +36,7 @@ export interface FinancialMetric {
   unit: string;
   current: number | null;
   previous: number | null;
+  yearlyValues?: Record<string, number | null>;
   change: number | null;
   changePercent: number | null;
   trend: Trend;
@@ -68,6 +69,17 @@ export interface FinancialInsights {
 export interface AnalysisPeriods {
   current: string;
   previous: string;
+  years?: string[];
+}
+
+export interface GrowthChartData {
+  years: string[];
+  series: {
+    revenue_growth: number[];
+    profit_growth: number[];
+    asset_growth: number[];
+    equity_growth: number[];
+  };
 }
 
 export interface FinancialAnalysisResult {
@@ -80,6 +92,7 @@ export interface FinancialAnalysisResult {
   financialHealth: FinancialHealth;
   metrics: Record<string, FinancialMetric>;
   groups?: MetricGroup[];
+  growthChart?: GrowthChartData;
   insights: FinancialInsights;
 }
 
