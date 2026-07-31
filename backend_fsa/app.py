@@ -11,7 +11,8 @@ if str(BASE_DIR) not in sys.path:
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from analysis_engine import analyze_symbol
 from data_file import get_data_records, get_data_summary
@@ -107,3 +108,22 @@ async def analyze_stock(symbol: str):
 @app.get("/analyze/{symbol}")
 async def analyze_stock_legacy(symbol: str):
     return await analyze_stock(symbol)
+
+
+# Static Files & Frontend SPA Handler
+FRONTEND_DIST = BASE_DIR.parent / "Frontend" / "dist"
+
+if FRONTEND_DIST.exists():
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/") or full_path.startswith("analyze/"):
+            return JSONResponse(status_code=404, content={"success": False, "message": "API Not Found"})
+        file_path = FRONTEND_DIST / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIST / "index.html")
+

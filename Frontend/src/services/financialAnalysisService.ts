@@ -2,8 +2,8 @@ import { normalizeFinancialAnalysisResponse } from "../adapters/financialAnalysi
 import type { FinancialAnalysisResult } from "../types/financial";
 import { mockAnalysisResult } from "../mocks/financialAnalysis";
 
-const API_BASE_URL = import.meta.env.VITE_FINANCIAL_API_URL ?? "http://localhost:8000";
-const REQUEST_TIMEOUT_MS = 3000;
+const API_BASE_URL = import.meta.env.VITE_FINANCIAL_API_URL ?? "";
+const REQUEST_TIMEOUT_MS = 10000;
 
 interface ApiEnvelope<T> {
   success: boolean;
