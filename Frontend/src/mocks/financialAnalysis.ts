@@ -140,6 +140,15 @@ export const mockFinancialAnalysisResponse: FinancialAnalysisApiResponse = {
         ]
       }
     ],
+    growthChart: {
+      years: ["2022", "2023", "2024", "2025"],
+      series: {
+        revenue_growth: [12.4, 15.1, 14.2, 18.5],
+        profit_growth: [10.8, 16.3, 15.8, 20.7],
+        asset_growth: [9.5, 11.2, 12.5, 18.2],
+        equity_growth: [11.0, 13.5, 14.8, 20.3]
+      }
+    },
     insights: {
       summary: "Doanh nghiệp có nền tảng tài chính tích cực trong giai đoạn so sánh.",
       strengths: [
