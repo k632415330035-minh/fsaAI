@@ -1,6 +1,6 @@
 import { normalizeFinancialAnalysisResponse } from "../adapters/financialAnalysisAdapter";
 import type { FinancialAnalysisResult } from "../types/financial";
-import { mockAnalysisResult } from "../mocks/financialAnalysis";
+import { mockFinancialAnalysisResponse } from "../mocks/financialAnalysis";
 
 const API_BASE_URL = import.meta.env.VITE_FINANCIAL_API_URL ?? "";
 const REQUEST_TIMEOUT_MS = 10000;
@@ -24,7 +24,7 @@ export async function analyzeStock(symbol: string): Promise<FinancialAnalysisRes
     return normalizeFinancialAnalysisResponse(response);
   } catch (error) {
     console.warn("Backend unavailable, falling back to mock financial analysis data:", error);
-    const mockData = JSON.parse(JSON.stringify(mockAnalysisResult));
+    const mockData = JSON.parse(JSON.stringify(mockFinancialAnalysisResponse));
     if (mockData.data) {
       mockData.data.symbol = normalizedSymbol;
       mockData.data.companyName = `Công ty Cổ phần ${normalizedSymbol}`;
