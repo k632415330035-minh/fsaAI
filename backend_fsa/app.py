@@ -56,8 +56,14 @@ def fail(message: str, error: Any, status_code: int = 400) -> JSONResponse:
     )
 
 
+FRONTEND_DIST = BASE_DIR.parent / "Frontend" / "dist"
+
+
 @app.get("/")
 def home():
+    index_file = FRONTEND_DIST / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
     return ok("Financial Analytics AI backend đang hoạt động.", {"service": "financial-analytics-ai", "version": "3.0"})
 
 
@@ -111,8 +117,6 @@ async def analyze_stock_legacy(symbol: str):
 
 
 # Static Files & Frontend SPA Handler
-FRONTEND_DIST = BASE_DIR.parent / "Frontend" / "dist"
-
 if FRONTEND_DIST.exists():
     assets_dir = FRONTEND_DIST / "assets"
     if assets_dir.exists():
