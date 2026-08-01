@@ -118,21 +118,46 @@ class FinancialData:
         match = re.search(r"(20\d{2}|19\d{2})", text)
         return match.group(1) if match else text.strip()
 
-    def get_balance_sheet(self) -> pd.DataFrame:
+    def _fetch_statement(self, statement_type: str) -> pd.DataFrame:
         with _quiet_vendor_output():
-            return self.normalize_statement(self.stock.finance.balance_sheet(period="year"))
+            try:
+                fn = getattr(self.stock.finance, statement_type)
+                df = fn(period="year")
+                if df is not None and not df.empty:
+                    return self.normalize_statement(df)
+            except Exception:
+                pass
+
+        # Fallback thử nguồn khác nếu nguồn chính lỗi
+        try:
+            with _quiet_vendor_output():
+                from vnstock import Vnstock
+                fallback_source = "TCBS" if getattr(self, "source", "VCI") == "VCI" else "VCI"
+                alt_stock = Vnstock().stock(symbol=self.symbol, source=fallback_source)
+                fn = getattr(alt_stock.finance, statement_type)
+                df = fn(period="year")
+                if df is not None and not df.empty:
+                    return self.normalize_statement(df)
+        except Exception:
+            pass
+
+        return pd.DataFrame()
+
+    def get_balance_sheet(self) -> pd.DataFrame:
+        return self._fetch_statement("balance_sheet")
 
     def get_income_statement(self) -> pd.DataFrame:
-        with _quiet_vendor_output():
-            return self.normalize_statement(self.stock.finance.income_statement(period="year"))
+        return self._fetch_statement("income_statement")
 
     def get_cash_flow(self) -> pd.DataFrame:
-        with _quiet_vendor_output():
-            return self.normalize_statement(self.stock.finance.cash_flow(period="year"))
+        return self._fetch_statement("cash_flow")
 
     def get_financial_ratio(self) -> pd.DataFrame:
         with _quiet_vendor_output():
-            return self.normalize_ratio(self.stock.finance.ratio(period="year"))
+            try:
+                return self.normalize_ratio(self.stock.finance.ratio(period="year"))
+            except Exception:
+                return pd.DataFrame()
 
     def get_all(self) -> dict:
         return {
@@ -146,6 +171,11 @@ class FinancialData:
 
 @contextlib.contextmanager
 def _quiet_vendor_output():
-    buffer = io.StringIO()
-    with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+    import os
+    try:
+        with open(os.devnull, "w", encoding="utf-8", errors="replace") as devnull:
+            with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
+                yield
+    except Exception:
         yield
+
