@@ -126,27 +126,44 @@ export function normalizeFinancialAnalysisResponse(raw: unknown): FinancialAnaly
   const rawGrowthYears = toStringArray(rawGrowthChart.years);
   const rawSeries = asRecord(rawGrowthChart.series);
 
-  const fallback4Years = [
-    String(Number(previousYear) - 2),
-    String(Number(previousYear) - 1),
-    previousYear,
-    currentYear,
-  ];
+  let parsedGrowthYears = rawGrowthYears;
+  let revSeries = toNumberArray(rawSeries.revenue_growth ?? rawSeries.revenueGrowth);
+  let profitSeries = toNumberArray(rawSeries.profit_growth ?? rawSeries.profitGrowth);
+  let assetSeries = toNumberArray(rawSeries.asset_growth ?? rawSeries.assetGrowth);
+  let equitySeries = toNumberArray(rawSeries.equity_growth ?? rawSeries.equityGrowth);
 
-  const parsedGrowthYears = rawGrowthYears.length >= 4 ? rawGrowthYears : fallback4Years;
+  if (parsedGrowthYears.length > 0 && parsedGrowthYears.length < 4) {
+    const firstYear = Number(parsedGrowthYears[0]);
+    const padCount = 4 - parsedGrowthYears.length;
+    const padYears = Array.from({ length: padCount }, (_, i) => String(firstYear - (padCount - i)));
+    parsedGrowthYears = [...padYears, ...parsedGrowthYears];
 
-  const revSeries = toNumberArray(rawSeries.revenue_growth ?? rawSeries.revenueGrowth);
-  const profitSeries = toNumberArray(rawSeries.profit_growth ?? rawSeries.profitGrowth);
-  const assetSeries = toNumberArray(rawSeries.asset_growth ?? rawSeries.assetGrowth);
-  const equitySeries = toNumberArray(rawSeries.equity_growth ?? rawSeries.equityGrowth);
+    if (revSeries.length > 0) revSeries = [...Array(padCount).fill(revSeries[0]), ...revSeries];
+    if (profitSeries.length > 0) profitSeries = [...Array(padCount).fill(profitSeries[0]), ...profitSeries];
+    if (assetSeries.length > 0) assetSeries = [...Array(padCount).fill(assetSeries[0]), ...assetSeries];
+    if (equitySeries.length > 0) equitySeries = [...Array(padCount).fill(equitySeries[0]), ...equitySeries];
+  }
+
+  if (parsedGrowthYears.length === 0) {
+    parsedGrowthYears = [
+      String(Number(previousYear) - 2),
+      String(Number(previousYear) - 1),
+      previousYear,
+      currentYear,
+    ];
+    revSeries = [12.4, 15.1, 14.2, 18.5];
+    profitSeries = [10.8, 16.3, 15.8, 20.7];
+    assetSeries = [9.5, 11.2, 12.5, 18.2];
+    equitySeries = [11.0, 13.5, 14.8, 20.3];
+  }
 
   const growthChart = {
     years: parsedGrowthYears,
     series: {
-      revenue_growth: revSeries.length >= 4 ? revSeries : [12.4, 15.1, 14.2, 18.5],
-      profit_growth: profitSeries.length >= 4 ? profitSeries : [10.8, 16.3, 15.8, 20.7],
-      asset_growth: assetSeries.length >= 4 ? assetSeries : [9.5, 11.2, 12.5, 18.2],
-      equity_growth: equitySeries.length >= 4 ? equitySeries : [11.0, 13.5, 14.8, 20.3],
+      revenue_growth: revSeries,
+      profit_growth: profitSeries,
+      asset_growth: assetSeries,
+      equity_growth: equitySeries,
     }
   };
 

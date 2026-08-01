@@ -242,6 +242,22 @@ def calculate_kpi(financial_data: dict) -> dict:
         e_p = _get_val(bs, ["Vốn chủ sở hữu", "VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu của Ngân hàng"], y_prev)
         equity_series.append(round(((e_c - e_p) / abs(e_p) * 100), 2) if e_p else 0.0)
 
+    if len(growth_years) > 0 and len(growth_years) < 4:
+        first_year = growth_years[0]
+        if first_year.isdigit():
+            pad_count = 4 - len(growth_years)
+            pad_years = [str(int(first_year) - i) for i in range(pad_count, 0, -1)]
+            growth_years = pad_years + growth_years
+            
+            if rev_series:
+                rev_series = [rev_series[0]] * pad_count + rev_series
+            if profit_series:
+                profit_series = [profit_series[0]] * pad_count + profit_series
+            if asset_series:
+                asset_series = [asset_series[0]] * pad_count + asset_series
+            if equity_series:
+                equity_series = [equity_series[0]] * pad_count + equity_series
+
     growth_chart = {
         "years": growth_years,
         "series": {
