@@ -3,7 +3,7 @@ import type { FinancialAnalysisResult } from "../types/financial";
 import { mockFinancialAnalysisResponse } from "../mocks/financialAnalysis";
 
 const API_BASE_URL = import.meta.env.VITE_FINANCIAL_API_URL ?? "";
-const REQUEST_TIMEOUT_MS = 10000;
+const REQUEST_TIMEOUT_MS = 60000;
 
 interface ApiEnvelope<T> {
   success: boolean;
